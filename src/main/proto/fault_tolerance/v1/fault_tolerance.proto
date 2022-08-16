@@ -1,0 +1,89 @@
+// Copyright 2022, OpenSergo Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package io.opensergo.proto.faulttolerance.v1;
+
+option java_package = "io.opensergo.proto.faulttolerance.v1";
+option java_outer_classname = "FaultToleranceProto";
+option java_multiple_files = true;
+option go_package = "github.com/opensergo/opensergo-control-plane/proto/fault_tolerance/v1";
+
+import "common/v1/common.proto";
+
+// FaultToleranceRule
+
+message FaultToleranceRuleTargetRef {
+  string target_resource_name = 1;
+}
+
+message FaultToleranceStrategyRef {
+  string name = 1;
+  string kind = 2;
+}
+
+message FaultToleranceActionRef {
+  string name = 1;
+  string kind = 2;
+}
+
+message FaultToleranceRule {
+  repeated FaultToleranceRuleTargetRef targets = 1;
+  repeated FaultToleranceStrategyRef strategies = 2;
+  FaultToleranceActionRef action = 3;
+}
+
+// RateLimitStrategy
+
+message RateLimitStrategy {
+  string name= 1;
+
+  string metric_type = 2;
+  string limit_mode = 3;
+  int64 threshold = 4;
+  int32 stat_duration = 5;
+  io.opensergo.proto.common.v1.TimeUnit stat_duration_time_unit = 6;
+}
+
+// ConcurrencyLimitStrategy
+
+message ConcurrencyLimitStrategy {
+  string limit_mode = 1;
+  int64 max_concurrency = 2;
+}
+
+// CircuitBreakerStrategy
+
+message CircuitBreakerSlowCondition {
+  int32 max_allowed_rt_millis = 1;
+}
+
+message CircuitBreakerErrorCondition {
+
+}
+
+message CircuitBreakerStrategy {
+  string strategy = 1;
+  string trigger_ratio = 2;
+  int64 stat_duration = 3;
+  io.opensergo.proto.common.v1.TimeUnit stat_duration_time_unit = 4;
+
+  int32 recovery_timeout = 5;
+  io.opensergo.proto.common.v1.TimeUnit recovery_timeout_time_unit = 6;
+  int32  min_request_amount = 7;
+
+  CircuitBreakerSlowCondition slow_condition = 8;
+  CircuitBreakerErrorCondition error_condition = 9;
+}
