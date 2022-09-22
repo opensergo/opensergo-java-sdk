@@ -19,7 +19,7 @@ package io.opensergo.proto.transport.v1;
 option java_package = "io.opensergo.proto.transport.v1";
 option java_outer_classname = "OpenSergoTransportProto";
 option java_multiple_files = true;
-option go_package = "github.com/opensergo/opensergo-control-plane/proto/transport/v1";
+option go_package = "github.com/opensergo/opensergo-control-plane/pkg/proto/transport/v1";
 
 import "google/protobuf/any.proto";
 
@@ -54,13 +54,14 @@ message SubscribeRequest {
   SubscribeRequestTarget target = 1;
   SubscribeOpType op_type = 2;
 
-  string version_info = 3;
-  string response_ack = 4;
+  string response_ack = 3;
 
-  repeated google.protobuf.Any attachments = 5;
+  repeated google.protobuf.Any attachments = 4;
 
   // client-to-server response status
-  Status status = 6;
+  Status status = 5;
+  string identifier = 6;
+  string request_id = 7;
 }
 
 message ControlPlaneDesc {
@@ -72,16 +73,20 @@ message ControlPlaneDesc {
 message SubscribeResponse {
   Status status = 1;
 
-  // The version of the response data.
-  string version_info = 2;
-  string ack = 3;
+  string ack = 2;
 
-  string namespace = 4;
-  string app = 5;
-  string kind = 6;
-  repeated google.protobuf.Any data = 7;
+  string namespace = 3;
+  string app = 4;
+  string kind = 5;
+  DataWithVersion dataWithVersion = 6;
 
-  ControlPlaneDesc control_plane = 8;
+  ControlPlaneDesc control_plane = 7;
+  string response_id = 8;
+}
+
+message DataWithVersion {
+  repeated google.protobuf.Any data = 1;
+  int64 version = 2;
 }
 
 // OpenSergo Universal Transport Service (state-of-the-world)

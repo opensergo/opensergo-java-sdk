@@ -18,8 +18,8 @@ package io.opensergo;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import io.opensergo.proto.faulttolerance.v1.FaultToleranceRule;
-import io.opensergo.proto.faulttolerance.v1.RateLimitStrategy;
+import io.opensergo.proto.fault_tolerance.v1.FaultToleranceRule;
+import io.opensergo.proto.fault_tolerance.v1.RateLimitStrategy;
 import io.opensergo.util.StringUtils;
 
 /**

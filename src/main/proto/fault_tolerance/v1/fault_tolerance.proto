@@ -14,76 +14,110 @@
 
 syntax = "proto3";
 
-package io.opensergo.proto.faulttolerance.v1;
+package io.opensergo.proto.fault_tolerance.v1;
 
-option java_package = "io.opensergo.proto.faulttolerance.v1";
+option java_package = "io.opensergo.proto.fault_tolerance.v1";
 option java_outer_classname = "FaultToleranceProto";
 option java_multiple_files = true;
-option go_package = "github.com/opensergo/opensergo-control-plane/proto/fault_tolerance/v1";
+option go_package = "github.com/opensergo/opensergo-control-plane/pkg/proto/fault_tolerance/v1";
 
 import "common/v1/common.proto";
 
+import "validate/validate.proto";
+
 // FaultToleranceRule
-
-message FaultToleranceRuleTargetRef {
-  string target_resource_name = 1;
-}
-
-message FaultToleranceStrategyRef {
-  string name = 1;
-  string kind = 2;
-}
-
-message FaultToleranceActionRef {
-  string name = 1;
-  string kind = 2;
-}
-
 message FaultToleranceRule {
+  message FaultToleranceRuleTargetRef {
+    string target_resource_name = 1;
+  }
+
+  message FaultToleranceStrategyRef {
+    string name = 1;
+    string kind = 2;
+  }
+
+  message FaultToleranceActionRef {
+    string name = 1;
+    string kind = 2;
+  }
+
   repeated FaultToleranceRuleTargetRef targets = 1;
   repeated FaultToleranceStrategyRef strategies = 2;
   FaultToleranceActionRef action = 3;
 }
 
 // RateLimitStrategy
-
 message RateLimitStrategy {
-  string name= 1;
+  enum MetricType {
+    TYPE_UNKNOWN = 0;
+    TYPE_REQUEST_AMOUNT = 1;
+  }
 
-  string metric_type = 2;
-  string limit_mode = 3;
-  int64 threshold = 4;
-  int32 stat_duration = 5;
+  enum LimitMode {
+    MODE_UNKNOWN = 0;
+    MODE_LOCAL = 1;
+    MODE_GLOBAL = 2;
+  }
+
+  string name = 1;
+
+  MetricType metric_type = 2;
+  LimitMode limit_mode = 3;
+  int64 threshold = 4  [(validate.rules).int64 = {gte: 0}];
+  int32 stat_duration = 5  [(validate.rules).int32 = {gt: 0}];
   io.opensergo.proto.common.v1.TimeUnit stat_duration_time_unit = 6;
 }
 
-// ConcurrencyLimitStrategy
+// ThrottlingStrategy
+message ThrottlingStrategy {
+  string name = 1;
 
+  int64 min_interval_millis_of_requests = 2;
+  int64 queue_timeout_millis = 3;
+}
+
+// ConcurrencyLimitStrategy
 message ConcurrencyLimitStrategy {
-  string limit_mode = 1;
-  int64 max_concurrency = 2;
+  enum LimitMode {
+    MODE_UNKNOWN = 0;
+    MODE_LOCAL = 1;
+    MODE_GLOBAL = 2;
+  }
+
+  string name = 1;
+
+  LimitMode limit_mode = 2;
+  int64 max_concurrency = 3;
 }
 
 // CircuitBreakerStrategy
-
-message CircuitBreakerSlowCondition {
-  int32 max_allowed_rt_millis = 1;
-}
-
-message CircuitBreakerErrorCondition {
-
-}
-
 message CircuitBreakerStrategy {
-  string strategy = 1;
-  string trigger_ratio = 2;
-  int64 stat_duration = 3;
-  io.opensergo.proto.common.v1.TimeUnit stat_duration_time_unit = 4;
+  enum Strategy {
+    STRATEGY_UNKNOWN = 0;
+    STRATEGY_SLOW_REQUEST_RATIO = 1;
+    STRATEGY_ERROR_REQUEST_RATIO = 2;
+  }
 
-  int32 recovery_timeout = 5;
-  io.opensergo.proto.common.v1.TimeUnit recovery_timeout_time_unit = 6;
-  int32  min_request_amount = 7;
+  message CircuitBreakerSlowCondition {
+    int32 max_allowed_rt_millis = 1;
+  }
 
-  CircuitBreakerSlowCondition slow_condition = 8;
-  CircuitBreakerErrorCondition error_condition = 9;
+  message CircuitBreakerErrorCondition {
+
+  }
+
+  string name = 1 [(validate.rules).string = {max_bytes: 1024}];
+
+  Strategy strategy = 2;
+  double trigger_ratio = 3 [(validate.rules).double = {gte: 0.0,  lte: 1.0}];
+  int64 stat_duration = 4 [(validate.rules).int64 = {gt: 0}];
+  io.opensergo.proto.common.v1.TimeUnit stat_duration_time_unit = 5;
+
+  int32 recovery_timeout = 6  [(validate.rules).int32 = {gt: 0}];
+  io.opensergo.proto.common.v1.TimeUnit recovery_timeout_time_unit = 7;
+  int32 min_request_amount = 8 [(validate.rules).int32 = {gt: 0}];
+
+  CircuitBreakerSlowCondition slow_condition = 9;
+  CircuitBreakerErrorCondition error_condition = 10;
 }
+

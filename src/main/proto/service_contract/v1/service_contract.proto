@@ -21,7 +21,7 @@ import "google/protobuf/timestamp.proto";
 option java_multiple_files = true;
 option java_package = "io.opensergo.proto.service_contract.v1";
 option java_outer_classname = "ServiceContractProto";
-option go_package = "github.com/opensergo/opensergo-go-sdk/proto/service_contract/v1";
+option go_package = "github.com/opensergo/opensergo-go-sdk/pkg/proto/service_contract/v1";
 
 // MetadataService report metadata
 service MetadataService {
