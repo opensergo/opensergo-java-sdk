@@ -16,24 +16,40 @@
 package io.opensergo.subscribe;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author Eric Zhao
+ * @author xzd
  */
 public class SubscribedConfigCache {
 
-    private final ConcurrentMap<SubscribeKey, List<Object>> dataMap = new ConcurrentHashMap<>();
+    private final ConcurrentMap<SubscribeKey, SubscribedData> dataMap = new ConcurrentHashMap<>();
 
-    public void updateData(SubscribeKey key, List<Object> data) {
-        dataMap.put(key, data);
+    public void updateData(SubscribeKey key, Object data, long version) {
+        // TODO: guarantee the latest version
+        dataMap.put(key, new SubscribedData(version, data));
     }
 
-    public List<Object> getDataFor(SubscribeKey key) {
+    public SubscribedData getDataFor(SubscribeKey key) {
         if (key == null) {
             return null;
         }
         return dataMap.get(key);
+    }
+
+    public Optional<Long> getDataVersionFor(SubscribeKey key) {
+        SubscribedData d = getDataFor(key);
+        return Optional.ofNullable(getDataFor(key)).map(SubscribedData::getVersion);
+    }
+
+    public <T> List<T> getDataListFor(SubscribeKey key, Class<T> clazz) {
+        SubscribedData d = getDataFor(key);
+        if (d == null || d.getData() == null) {
+            return null;
+        }
+        return (List<T>) d.getData();
     }
 }
