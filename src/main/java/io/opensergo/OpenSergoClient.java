@@ -18,6 +18,7 @@ package io.opensergo;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import io.opensergo.log.OpenSergoLogger;
 import io.opensergo.proto.transport.v1.OpenSergoUniversalTransportServiceGrpc;
 import io.opensergo.proto.transport.v1.SubscribeOpType;
 import io.opensergo.proto.transport.v1.SubscribeRequest;
@@ -27,6 +28,9 @@ import io.opensergo.subscribe.SubscribeKey;
 import io.opensergo.subscribe.SubscribeRegistry;
 import io.opensergo.subscribe.SubscribedConfigCache;
 import io.opensergo.util.AssertUtils;
+import io.opensergo.util.IdentifierUtils;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Eric Zhao
@@ -41,6 +45,8 @@ public class OpenSergoClient implements AutoCloseable {
     private final SubscribedConfigCache configCache;
     private final SubscribeRegistry subscribeRegistry;
 
+    private AtomicInteger reqId;
+
     public OpenSergoClient(String host, int port) {
         this.channel = ManagedChannelBuilder.forAddress(host, port)
             // TODO: support TLS
@@ -49,6 +55,7 @@ public class OpenSergoClient implements AutoCloseable {
         this.transportGrpcStub = OpenSergoUniversalTransportServiceGrpc.newStub(channel);
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
+        this.reqId = new AtomicInteger(0);
     }
 
     public void start() throws Exception {
@@ -71,7 +78,7 @@ public class OpenSergoClient implements AutoCloseable {
 
         if (requestAndResponseWriter == null) {
             // TODO: return status that indicates not ready
-            return false;
+            throw new IllegalStateException("gRPC stream is not ready");
         }
         SubscribeRequestTarget subTarget = SubscribeRequestTarget.newBuilder()
             .setNamespace(subscribeKey.getNamespace()).setApp(subscribeKey.getApp())
@@ -100,14 +107,16 @@ public class OpenSergoClient implements AutoCloseable {
 
         if (requestAndResponseWriter == null) {
             // TODO: return status that indicates not ready
-            return false;
+            throw new IllegalStateException("gRPC stream is not ready");
         }
         SubscribeRequestTarget subTarget = SubscribeRequestTarget.newBuilder()
             .setNamespace(subscribeKey.getNamespace()).setApp(subscribeKey.getApp())
             .addKinds(subscribeKey.getKind().getKindName())
             .build();
         SubscribeRequest request = SubscribeRequest.newBuilder()
+            .setRequestId(String.valueOf(reqId.incrementAndGet()))
             .setTarget(subTarget).setOpType(SubscribeOpType.SUBSCRIBE)
+            .setIdentifier(IdentifierUtils.generateIdentifier(System.identityHashCode(this)))
             .build();
         // Send SubscribeRequest
         requestAndResponseWriter.onNext(request);
@@ -115,6 +124,8 @@ public class OpenSergoClient implements AutoCloseable {
         // Register subscriber to local.
         if (subscriber != null) {
             subscribeRegistry.registerSubscriber(subscribeKey, subscriber);
+            OpenSergoLogger.info("OpenSergo config subscriber registered, subscribeKey={}, subscriber={}",
+                subscribeKey, subscriber);
         }
 
         return true;
