@@ -21,6 +21,10 @@ import java.util.List;
 import com.google.protobuf.Any;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
+import io.opensergo.log.OpenSergoLogger;
+import io.opensergo.subscribe.LocalDataNotifyResult;
+import io.opensergo.subscribe.SubscribedData;
+import io.opensergo.proto.transport.v1.DataWithVersion;
 import io.opensergo.proto.transport.v1.Status;
 import io.opensergo.proto.transport.v1.SubscribeRequest;
 import io.opensergo.proto.transport.v1.SubscribeResponse;
@@ -28,6 +32,7 @@ import io.opensergo.subscribe.OpenSergoConfigSubscriber;
 import io.opensergo.subscribe.SubscribeKey;
 import io.opensergo.subscribe.SubscribeRegistry;
 import io.opensergo.subscribe.SubscribedConfigCache;
+import io.opensergo.util.StringUtils;
 
 /**
  * @author Eric Zhao
@@ -50,19 +55,24 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
         this.requestStream = requestStream;
     }
 
-    public List<Object> notifyDataChange(String namespace, String appName, ConfigKindMetadata metadata,
-                                         List<Any> rawDataList) throws Exception {
-        SubscribeKey subscribeKey = new SubscribeKey(namespace, appName, metadata.getKind());
+    private LocalDataNotifyResult notifyDataChange(SubscribeKey subscribeKey, DataWithVersion dataWithVersion)
+        throws Exception {
+        long receivedVersion = dataWithVersion.getVersion();
+        SubscribedData cachedData = configCache.getDataFor(subscribeKey);
+        if (cachedData != null && cachedData.getVersion() > receivedVersion) {
+            // The upcoming data is out-dated, so we'll not resolve the push request.
+            return new LocalDataNotifyResult().setCode(OpenSergoTransportConstants.CODE_ERROR_VERSION_OUTDATED);
+        }
 
         // Decode actual data from the raw "Any" data.
-        List<Object> dataList = decodeActualData(metadata.getKindName(), rawDataList);
+        List<Object> dataList = decodeActualData(subscribeKey.getKind().getKindName(), dataWithVersion.getDataList());
         // Update to local config cache.
-        configCache.updateData(subscribeKey, dataList);
+        configCache.updateData(subscribeKey, dataList, receivedVersion);
 
         List<OpenSergoConfigSubscriber> subscribers = subscribeRegistry.getSubscribersOf(subscribeKey);
         if (subscribers == null || subscribers.isEmpty()) {
             // no-subscriber is acceptable (just for cache-and-pull mode)
-            return dataList;
+            return LocalDataNotifyResult.withSuccess(dataList);
         }
 
         List<Throwable> notifyErrors = new ArrayList<>();
@@ -71,17 +81,34 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
             try {
                 subscriber.onConfigUpdate(subscribeKey, dataList);
             } catch (Throwable t) {
+                OpenSergoLogger.error("Failed to notify OpenSergo config change event, subscribeKey={}, subscriber={}",
+                    subscribeKey, subscriber);
                 notifyErrors.add(t);
             }
         }
 
-        // TODO: handle all errors and propagate to caller
-
-        return dataList;
+        if (notifyErrors.isEmpty()) {
+            return LocalDataNotifyResult.withSuccess(dataList);
+        } else {
+            return new LocalDataNotifyResult().setCode(OpenSergoTransportConstants.CODE_ERROR_SUBSCRIBE_HANDLER_ERROR)
+                .setDecodedData(dataList).setNotifyErrors(notifyErrors);
+        }
     }
 
     @Override
     public void onNext(SubscribeResponse pushCommand) {
+        if (!StringUtils.isEmpty(pushCommand.getAck())) {
+            // This indicates a response
+            int code = pushCommand.getStatus().getCode();
+            if (code == OpenSergoTransportConstants.CODE_SUCCESS) {
+                return;
+            }
+            if (code >= 4000 && code < 4100) {
+                OpenSergoLogger.warn("Warn: req failed, command={}", pushCommand);
+                // TODO: handle me
+                return;
+            }
+        }
         // server-push command received.
         String kindName = pushCommand.getKind();
 
@@ -91,25 +118,48 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
                 throw new IllegalArgumentException("unrecognized config kind: " + kindName);
             }
 
+            SubscribeKey subscribeKey = new SubscribeKey(pushCommand.getNamespace(), pushCommand.getApp(),
+                kindMetadata.getKind());
             // Decode the actual data and notify to upstream subscribers.
-            List<Object> dataList = notifyDataChange(pushCommand.getNamespace(), pushCommand.getApp(), kindMetadata,
-                pushCommand.getDataList());
-            // TODO: handle partial-success (i.e. the data has been updated to cache, but error occurred in subscribers)
+            LocalDataNotifyResult localResult = notifyDataChange(subscribeKey, pushCommand.getDataWithVersion());
 
-            // TODO: track versionInfo and ackInfo
+            // TODO: handle partial-success (i.e. the data has been updated to cache, but error occurred in subscribers)
+            Status status;
+            switch (localResult.getCode()) {
+                case OpenSergoTransportConstants.CODE_SUCCESS:
+                    status = Status.newBuilder().setCode(OpenSergoTransportConstants.CODE_SUCCESS).build();
+                    break;
+                case OpenSergoTransportConstants.CODE_ERROR_SUBSCRIBE_HANDLER_ERROR:
+                    StringBuilder message = new StringBuilder();
+                    for (Throwable t : localResult.getNotifyErrors()) {
+                        message.append(t.toString()).append('|');
+                    }
+                    status = Status.newBuilder().setMessage(message.toString()).setCode(
+                        OpenSergoTransportConstants.CODE_SUCCESS).build();
+                    break;
+                case OpenSergoTransportConstants.CODE_ERROR_VERSION_OUTDATED:
+                    status = Status.newBuilder().setCode(OpenSergoTransportConstants.CODE_ERROR_VERSION_OUTDATED)
+                        .setMessage("outdated version").build();
+                    break;
+                default:
+                    status = Status.newBuilder().setCode(localResult.getCode()).build();
+                    break;
+            }
 
             // ACK response
-            SubscribeRequest pushAckResponse = SubscribeRequest.newBuilder()
-                .setStatus(Status.newBuilder().setCode(0).build())
-                .build();
+            SubscribeRequest pushAckResponse = SubscribeRequest.newBuilder().setStatus(status)
+                .setResponseAck(OpenSergoTransportConstants.ACK_FLAG)
+                .setRequestId(pushCommand.getResponseId()).build();
             requestStream.onNext(pushAckResponse);
         } catch (Exception ex) {
-            // TODO: handle error (but not for ack error?)
+            // TODO: improve the error handling logic
+            OpenSergoLogger.error("Handle push command failed", ex);
 
             // NACK response
             SubscribeRequest pushNackResponse = SubscribeRequest.newBuilder()
-                .setStatus(Status.newBuilder().setCode(-1).setMessage(ex.toString()).build())
-                .build();
+                .setStatus(Status.newBuilder().setCode(OpenSergoTransportConstants.CODE_ERROR_UNKNOWN)
+                    .setMessage(ex.toString()).build())
+                .setResponseAck(OpenSergoTransportConstants.NACK_FLAG).build();
             requestStream.onNext(pushNackResponse);
         }
     }
@@ -128,11 +178,11 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
 
     @Override
     public void onError(Throwable t) {
-        // TODO: handle error
+        OpenSergoLogger.error("Fatal error occurred on OpenSergo gRPC ClientObserver", t);
     }
 
     @Override
     public void onCompleted() {
-
+        OpenSergoLogger.info("OpenSergoSubscribeClientObserver onCompleted");
     }
 }
