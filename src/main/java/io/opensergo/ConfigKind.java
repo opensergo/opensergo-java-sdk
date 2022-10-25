@@ -23,16 +23,26 @@ public enum ConfigKind {
     /**
      * FaultToleranceRule
      */
-    FAULT_TOLERANCE_RULE("fault-tolerance.opensergo.io/v1alpha1/FaultToleranceRule"),
-    RATE_LIMIT_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/RateLimitStrategy");
+    FAULT_TOLERANCE_RULE("fault-tolerance.opensergo.io/v1alpha1/FaultToleranceRule", "FaultToleranceRule"),
+    RATE_LIMIT_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/RateLimitStrategy", "RateLimitStrategy"),
+    THROTTLING_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/ThrottlingStrategy", "ThrottlingStrategy"),
+    CONCURRENCY_LIMIT_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/ConcurrencyLimitStrategy",
+        "ConcurrencyLimitStrategy"),
+    CIRCUIT_BREAKER_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/CircuitBreakerStrategy", "CircuitBreakerStrategy");
 
     private final String kindName;
+    private final String simpleKindName;
 
-    ConfigKind(String kindName) {
+    ConfigKind(String kindName, String simpleKindName) {
         this.kindName = kindName;
+        this.simpleKindName = simpleKindName;
     }
 
     public String getKindName() {
         return kindName;
+    }
+
+    public String getSimpleKindName() {
+        return simpleKindName;
     }
 }

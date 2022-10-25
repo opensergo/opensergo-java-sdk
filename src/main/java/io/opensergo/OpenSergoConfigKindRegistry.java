@@ -18,8 +18,11 @@ package io.opensergo;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import io.opensergo.proto.fault_tolerance.v1.CircuitBreakerStrategy;
+import io.opensergo.proto.fault_tolerance.v1.ConcurrencyLimitStrategy;
 import io.opensergo.proto.fault_tolerance.v1.FaultToleranceRule;
 import io.opensergo.proto.fault_tolerance.v1.RateLimitStrategy;
+import io.opensergo.proto.fault_tolerance.v1.ThrottlingStrategy;
 import io.opensergo.util.StringUtils;
 
 /**
@@ -36,6 +39,9 @@ public final class OpenSergoConfigKindRegistry {
 
         registerConfigKind(ConfigKind.FAULT_TOLERANCE_RULE, FaultToleranceRule.class);
         registerConfigKind(ConfigKind.RATE_LIMIT_STRATEGY, RateLimitStrategy.class);
+        registerConfigKind(ConfigKind.THROTTLING_STRATEGY, ThrottlingStrategy.class);
+        registerConfigKind(ConfigKind.CONCURRENCY_LIMIT_STRATEGY, ConcurrencyLimitStrategy.class);
+        registerConfigKind(ConfigKind.CIRCUIT_BREAKER_STRATEGY, CircuitBreakerStrategy.class);
     }
 
     public static ConfigKindMetadata getKindMetadata(ConfigKind kind) {
