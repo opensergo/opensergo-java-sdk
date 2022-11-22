@@ -102,19 +102,28 @@ public class OpenSergoClient implements AutoCloseable {
     }
 
     private void keepAlive() {
-        try {
-            if (status != OpenSergoClientStatus.STARTING
-                    && status != OpenSergoClientStatus.STARTED
-                    && status != OpenSergoClientStatus.SHUTDOWN) {
-                OpenSergoLogger.info("try to restart openSergoClient...");
-                this.start();
+        // TODO change to event-based design, instead of for-loop.
+        for (;;) {
+            if (status == OpenSergoClientStatus.SHUTDOWN) {
+                return;
             }
-            Thread.sleep(TimeUnit.SECONDS.toMillis(10));
-            if( status != OpenSergoClientStatus.SHUTDOWN) {
-                keepAlive();
+
+            try {
+                if (status == OpenSergoClientStatus.INTERRUPTED) {
+                    OpenSergoLogger.info("try to restart openSergoClient...");
+                    this.start();
+                }
+                Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+            } catch (InterruptedException e) {
+                OpenSergoLogger.error(e.toString(), e);
+            } catch (Exception e) {
+                try {
+                    this.close();
+                } catch (Exception ex) {
+                    status = OpenSergoClientStatus.SHUTDOWN;
+                }
+                OpenSergoLogger.error("close OpenSergoClient because of " + e, e);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
