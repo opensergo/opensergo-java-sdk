@@ -16,6 +16,7 @@
 package io.opensergo.subscribe;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -33,7 +34,12 @@ public class SubscribeRegistry {
         AssertUtils.assertNotNull(key, "subscribeKey cannot be null");
         AssertUtils.assertNotNull(subscriber, "subscriber cannot be null");
         List<OpenSergoConfigSubscriber> list = subscriberMap.computeIfAbsent(key, v -> new CopyOnWriteArrayList<>());
+        // TODO distinct the same OpenSergoConfigSubscriber
         list.add(subscriber);
+    }
+
+    public Set<SubscribeKey> getSubscriberKeysAll() {
+        return subscriberMap.keySet();
     }
 
     public List<OpenSergoConfigSubscriber> getSubscribersOf(SubscribeKey key) {

@@ -30,8 +30,6 @@ import io.opensergo.proto.transport.v1.SubscribeRequest;
 import io.opensergo.proto.transport.v1.SubscribeResponse;
 import io.opensergo.subscribe.OpenSergoConfigSubscriber;
 import io.opensergo.subscribe.SubscribeKey;
-import io.opensergo.subscribe.SubscribeRegistry;
-import io.opensergo.subscribe.SubscribedConfigCache;
 import io.opensergo.util.StringUtils;
 
 /**
@@ -41,13 +39,10 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
 
     private ClientCallStreamObserver<SubscribeRequest> requestStream;
 
-    private final SubscribedConfigCache configCache;
-    private final SubscribeRegistry subscribeRegistry;
+    private OpenSergoClient openSergoClient;
 
-    public OpenSergoSubscribeClientObserver(SubscribedConfigCache configCache,
-                                            SubscribeRegistry subscribeRegistry) {
-        this.configCache = configCache;
-        this.subscribeRegistry = subscribeRegistry;
+    public OpenSergoSubscribeClientObserver(OpenSergoClient openSergoClient) {
+        this.openSergoClient = openSergoClient;
     }
 
     @Override
@@ -58,7 +53,7 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
     private LocalDataNotifyResult notifyDataChange(SubscribeKey subscribeKey, DataWithVersion dataWithVersion)
         throws Exception {
         long receivedVersion = dataWithVersion.getVersion();
-        SubscribedData cachedData = configCache.getDataFor(subscribeKey);
+        SubscribedData cachedData = this.openSergoClient.getConfigCache().getDataFor(subscribeKey);
         if (cachedData != null && cachedData.getVersion() > receivedVersion) {
             // The upcoming data is out-dated, so we'll not resolve the push request.
             return new LocalDataNotifyResult().setCode(OpenSergoTransportConstants.CODE_ERROR_VERSION_OUTDATED);
@@ -67,9 +62,9 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
         // Decode actual data from the raw "Any" data.
         List<Object> dataList = decodeActualData(subscribeKey.getKind().getKindName(), dataWithVersion.getDataList());
         // Update to local config cache.
-        configCache.updateData(subscribeKey, dataList, receivedVersion);
+        this.openSergoClient.getConfigCache().updateData(subscribeKey, dataList, receivedVersion);
 
-        List<OpenSergoConfigSubscriber> subscribers = subscribeRegistry.getSubscribersOf(subscribeKey);
+        List<OpenSergoConfigSubscriber> subscribers = this.openSergoClient.getSubscribeRegistry().getSubscribersOf(subscribeKey);
         if (subscribers == null || subscribers.isEmpty()) {
             // no-subscriber is acceptable (just for cache-and-pull mode)
             return LocalDataNotifyResult.withSuccess(dataList);
@@ -178,6 +173,11 @@ public class OpenSergoSubscribeClientObserver implements ClientResponseObserver<
 
     @Override
     public void onError(Throwable t) {
+        // TODO add handles for different io.grpc.Status of Throwable from ClientCallStreamObserver<SubscribeRequest>
+        io.grpc.Status.Code errorCode = io.grpc.Status.fromThrowable(t).getCode();
+        if(errorCode.equals(io.grpc.Status.UNAVAILABLE.getCode())) {
+            this.openSergoClient.status = OpenSergoClientStatus.INTERRUPTED;
+        }
         OpenSergoLogger.error("Fatal error occurred on OpenSergo gRPC ClientObserver", t);
     }
 

@@ -30,6 +30,8 @@ import io.opensergo.subscribe.SubscribedConfigCache;
 import io.opensergo.util.AssertUtils;
 import io.opensergo.util.IdentifierUtils;
 
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -46,6 +48,7 @@ public class OpenSergoClient implements AutoCloseable {
     private final SubscribeRegistry subscribeRegistry;
 
     private AtomicInteger reqId;
+    protected volatile OpenSergoClientStatus status;
 
     public OpenSergoClient(String host, int port) {
         this.channel = ManagedChannelBuilder.forAddress(host, port)
@@ -56,16 +59,66 @@ public class OpenSergoClient implements AutoCloseable {
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
         this.reqId = new AtomicInteger(0);
+        status = OpenSergoClientStatus.INITIAL;
     }
 
     public void start() throws Exception {
+        OpenSergoLogger.info("OpensergoClient is starting...");
+
+        if (status == OpenSergoClientStatus.INITIAL) {
+            OpenSergoLogger.info("open keepavlive thread");
+            Thread keepAliveThread = new Thread(this::keepAlive);
+            keepAliveThread.setName("thread-opensergo-keepalive-" + keepAliveThread.getId());
+            keepAliveThread.setDaemon(true);
+            keepAliveThread.start();
+        }
+
+        status = OpenSergoClientStatus.STARTING;
+
         this.requestAndResponseWriter = transportGrpcStub.withWaitForReady()
-            .subscribeConfig(new OpenSergoSubscribeClientObserver(configCache, subscribeRegistry));
+            .subscribeConfig(new OpenSergoSubscribeClientObserver(this));
+
+        OpenSergoLogger.info("begin to subscribe config-data...");
+        this.subscribeRegistry.getSubscriberKeysAll().forEach(subscribeKey -> {
+            this.subscribeConfig(subscribeKey);
+        });
+
+        OpenSergoLogger.info("openSergoClient is started");
+        status = OpenSergoClientStatus.STARTED;
+    }
+
+    private void keepAlive() {
+        // TODO change to event-based design, instead of for-loop.
+        for (;;) {
+            if (status == OpenSergoClientStatus.SHUTDOWN) {
+                return;
+            }
+
+            try {
+                if (status == OpenSergoClientStatus.INTERRUPTED) {
+                    OpenSergoLogger.info("try to restart openSergoClient...");
+                    this.start();
+                }
+                Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+            } catch (InterruptedException e) {
+                OpenSergoLogger.error(e.toString(), e);
+            } catch (Exception e) {
+                try {
+                    this.close();
+                } catch (Exception ex) {
+                    status = OpenSergoClientStatus.SHUTDOWN;
+                }
+                OpenSergoLogger.error("close OpenSergoClient because of " + e, e);
+            }
+        }
     }
 
     @Override
     public void close() throws Exception {
         requestAndResponseWriter.onCompleted();
+
+        // stop the keepAliveThread
+        status = OpenSergoClientStatus.SHUTDOWN;
 
         // gracefully drain the requests, then close the connection
         channel.shutdown();
@@ -77,8 +130,8 @@ public class OpenSergoClient implements AutoCloseable {
         AssertUtils.assertNotNull(subscribeKey.getKind(), "kind cannot be null");
 
         if (requestAndResponseWriter == null) {
-            // TODO: return status that indicates not ready
-            throw new IllegalStateException("gRPC stream is not ready");
+            OpenSergoLogger.error("Fatal error occurred on OpenSergo gRPC ClientObserver", new IllegalStateException("gRPC stream is not ready"));
+            status = OpenSergoClientStatus.INTERRUPTED;
         }
         SubscribeRequestTarget subTarget = SubscribeRequestTarget.newBuilder()
             .setNamespace(subscribeKey.getNamespace()).setApp(subscribeKey.getApp())
@@ -106,8 +159,8 @@ public class OpenSergoClient implements AutoCloseable {
         AssertUtils.assertNotNull(subscribeKey.getKind(), "kind cannot be null");
 
         if (requestAndResponseWriter == null) {
-            // TODO: return status that indicates not ready
-            throw new IllegalStateException("gRPC stream is not ready");
+            OpenSergoLogger.error("Fatal error occurred on OpenSergo gRPC ClientObserver", new IllegalStateException("gRPC stream is not ready"));
+            status = OpenSergoClientStatus.INTERRUPTED;
         }
         SubscribeRequestTarget subTarget = SubscribeRequestTarget.newBuilder()
             .setNamespace(subscribeKey.getNamespace()).setApp(subscribeKey.getApp())
@@ -124,8 +177,7 @@ public class OpenSergoClient implements AutoCloseable {
         // Register subscriber to local.
         if (subscriber != null) {
             subscribeRegistry.registerSubscriber(subscribeKey, subscriber);
-            OpenSergoLogger.info("OpenSergo config subscriber registered, subscribeKey={}, subscriber={}",
-                subscribeKey, subscriber);
+            OpenSergoLogger.info("OpenSergo config subscriber registered, subscribeKey={}, subscriber={}", subscribeKey, subscriber);
         }
 
         return true;
@@ -133,6 +185,10 @@ public class OpenSergoClient implements AutoCloseable {
 
     public SubscribedConfigCache getConfigCache() {
         return configCache;
+    }
+
+    public SubscribeRegistry getSubscribeRegistry() {
+        return subscribeRegistry;
     }
 
 }
