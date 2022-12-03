@@ -62,20 +62,6 @@ public class OpenSergoClient implements AutoCloseable {
         status = OpenSergoClientStatus.INITIAL;
     }
 
-    public void registerSubscribeInfo(OpenSergoClientSubscribeInfo subscribeInfo) {
-        // Register subscriber to local.
-        if (Optional.of(subscribeInfo.getSubscriberList()).isPresent() && subscribeInfo.getSubscriberList().size() > 0) {
-            subscribeInfo.getSubscriberList().forEach(subscriber -> {
-                this.subscribeRegistry.registerSubscriber(subscribeInfo.getSubscribeKey(), subscriber);
-                OpenSergoLogger.info("OpenSergo subscribeinfo registered, subscribeKey={}, subscriber={}", subscribeInfo.getSubscribeKey(), subscriber);
-
-                if (requestAndResponseWriter != null && this.status == OpenSergoClientStatus.STARTED) {
-                    this.subscribeConfig(subscribeInfo.getSubscribeKey());
-                }
-            });
-        }
-    }
-
     public void start() throws Exception {
         OpenSergoLogger.info("OpensergoClient is starting...");
 
@@ -187,6 +173,12 @@ public class OpenSergoClient implements AutoCloseable {
             .build();
         // Send SubscribeRequest
         requestAndResponseWriter.onNext(request);
+
+        // Register subscriber to local.
+        if (subscriber != null) {
+            subscribeRegistry.registerSubscriber(subscribeKey, subscriber);
+            OpenSergoLogger.info("OpenSergo config subscriber registered, subscribeKey={}, subscriber={}", subscribeKey, subscriber);
+        }
 
         return true;
     }
