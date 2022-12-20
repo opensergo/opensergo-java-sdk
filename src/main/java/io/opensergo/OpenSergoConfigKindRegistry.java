@@ -18,6 +18,7 @@ package io.opensergo;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import io.envoyproxy.envoy.config.route.v3.RouteConfiguration;
 import io.opensergo.proto.fault_tolerance.v1.CircuitBreakerStrategy;
 import io.opensergo.proto.fault_tolerance.v1.ConcurrencyLimitStrategy;
 import io.opensergo.proto.fault_tolerance.v1.FaultToleranceRule;
@@ -42,6 +43,7 @@ public final class OpenSergoConfigKindRegistry {
         registerConfigKind(ConfigKind.THROTTLING_STRATEGY, ThrottlingStrategy.class);
         registerConfigKind(ConfigKind.CONCURRENCY_LIMIT_STRATEGY, ConcurrencyLimitStrategy.class);
         registerConfigKind(ConfigKind.CIRCUIT_BREAKER_STRATEGY, CircuitBreakerStrategy.class);
+        registerConfigKind(ConfigKind.TRAFFIC_ROUTER_STRATEGY, RouteConfiguration.class);
     }
 
     public static ConfigKindMetadata getKindMetadata(ConfigKind kind) {

@@ -27,8 +27,10 @@ public enum ConfigKind {
     RATE_LIMIT_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/RateLimitStrategy", "RateLimitStrategy"),
     THROTTLING_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/ThrottlingStrategy", "ThrottlingStrategy"),
     CONCURRENCY_LIMIT_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/ConcurrencyLimitStrategy",
-        "ConcurrencyLimitStrategy"),
-    CIRCUIT_BREAKER_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/CircuitBreakerStrategy", "CircuitBreakerStrategy");
+            "ConcurrencyLimitStrategy"),
+    CIRCUIT_BREAKER_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/CircuitBreakerStrategy", "CircuitBreakerStrategy"),
+
+    TRAFFIC_ROUTER_STRATEGY("traffic.opensergo.io/v1alpha1/TrafficRouter", "TrafficRouter");
 
     private final String kindName;
     private final String simpleKindName;
