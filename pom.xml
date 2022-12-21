@@ -104,17 +104,18 @@
             <version>${javax.annotation-api.version}</version>
         </dependency>
 
+        <!-- reuse a few xDS proto here -->
+        <dependency>
+            <groupId>io.envoyproxy.controlplane</groupId>
+            <artifactId>api</artifactId>
+            <version>${envoy-api.version}</version>
+        </dependency>
+
         <!-- test-scope dependencies -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.envoyproxy.controlplane</groupId>
-            <artifactId>api</artifactId>
-            <version>${envoy-api.version}</version>
         </dependency>
     </dependencies>
 
