@@ -44,6 +44,7 @@ public final class OpenSergoConfigKindRegistry {
         registerConfigKind(ConfigKind.CONCURRENCY_LIMIT_STRATEGY, ConcurrencyLimitStrategy.class);
         registerConfigKind(ConfigKind.CIRCUIT_BREAKER_STRATEGY, CircuitBreakerStrategy.class);
         registerConfigKind(ConfigKind.TRAFFIC_ROUTER_STRATEGY, RouteConfiguration.class);
+        registerConfigKind(ConfigKind.VIRTUAL_WORKLOAD_STRATEGY, RouteConfiguration.class);
     }
 
     public static ConfigKindMetadata getKindMetadata(ConfigKind kind) {

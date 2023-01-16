@@ -30,7 +30,9 @@ public enum ConfigKind {
             "ConcurrencyLimitStrategy"),
     CIRCUIT_BREAKER_STRATEGY("fault-tolerance.opensergo.io/v1alpha1/CircuitBreakerStrategy", "CircuitBreakerStrategy"),
 
-    TRAFFIC_ROUTER_STRATEGY("traffic.opensergo.io/v1alpha1/TrafficRouter", "TrafficRouter");
+    TRAFFIC_ROUTER_STRATEGY("traffic.opensergo.io/v1alpha1/TrafficRouter", "TrafficRouter"),
+
+    VIRTUAL_WORKLOAD_STRATEGY("traffic.opensergo.io/v1alpha1/VirtualWorkload", "VirtualWorkload");
 
     private final String kindName;
     private final String simpleKindName;
