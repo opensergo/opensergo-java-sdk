@@ -38,11 +38,15 @@ public final class OpenSergoConfigKindRegistry {
     static {
         KIND_MAP = new ConcurrentHashMap<>();
 
+        // domain: fault-tolerance
         registerConfigKind(ConfigKind.FAULT_TOLERANCE_RULE, FaultToleranceRule.class);
         registerConfigKind(ConfigKind.RATE_LIMIT_STRATEGY, RateLimitStrategy.class);
         registerConfigKind(ConfigKind.THROTTLING_STRATEGY, ThrottlingStrategy.class);
         registerConfigKind(ConfigKind.CONCURRENCY_LIMIT_STRATEGY, ConcurrencyLimitStrategy.class);
         registerConfigKind(ConfigKind.CIRCUIT_BREAKER_STRATEGY, CircuitBreakerStrategy.class);
+
+        // domain: traffic
+        // NOTE: here we've reused a few parts of xDS proto (e.g. route proto)
         registerConfigKind(ConfigKind.TRAFFIC_ROUTER_STRATEGY, RouteConfiguration.class);
         registerConfigKind(ConfigKind.VIRTUAL_WORKLOAD_STRATEGY, RouteConfiguration.class);
     }

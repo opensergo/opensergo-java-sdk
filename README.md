@@ -23,7 +23,7 @@ See the [中文文档](https://opensergo.io/zh-cn/) for document in Chinese.
 <dependency>
     <groupId>io.opensergo</groupId>
     <artifactId>opensergo-java-sdk</artifactId>
-    <version>0.1.0-beta1</version>
+    <version>0.1.0-beta2</version>
 </dependency>
 ```
 

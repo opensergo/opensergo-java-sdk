@@ -34,6 +34,7 @@ public enum ConfigKind {
 
     VIRTUAL_WORKLOAD_STRATEGY("traffic.opensergo.io/v1alpha1/VirtualWorkload", "VirtualWorkload");
 
+
     private final String kindName;
     private final String simpleKindName;
 
