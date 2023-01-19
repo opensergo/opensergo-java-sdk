@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import io.envoyproxy.envoy.config.route.v3.RouteConfiguration;
+import io.envoyproxy.envoy.service.discovery.v3.DiscoveryResponse;
 import io.opensergo.proto.fault_tolerance.v1.CircuitBreakerStrategy;
 import io.opensergo.proto.fault_tolerance.v1.ConcurrencyLimitStrategy;
 import io.opensergo.proto.fault_tolerance.v1.FaultToleranceRule;
@@ -48,7 +49,7 @@ public final class OpenSergoConfigKindRegistry {
         // domain: traffic
         // NOTE: here we've reused a few parts of xDS proto (e.g. route proto)
         registerConfigKind(ConfigKind.TRAFFIC_ROUTER_STRATEGY, RouteConfiguration.class);
-        registerConfigKind(ConfigKind.VIRTUAL_WORKLOAD_STRATEGY, RouteConfiguration.class);
+        registerConfigKind(ConfigKind.VIRTUAL_WORKLOAD_STRATEGY, DiscoveryResponse.class);
     }
 
     public static ConfigKindMetadata getKindMetadata(ConfigKind kind) {
