@@ -30,6 +30,7 @@ import io.opensergo.subscribe.SubscribedConfigCache;
 import io.opensergo.util.AssertUtils;
 import io.opensergo.util.IdentifierUtils;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -48,8 +49,9 @@ public class OpenSergoClient implements AutoCloseable {
     private AtomicInteger reqId;
 
     public OpenSergoClient(String host, int port) {
+        // TODO: support customized config for the OpenSergoClient.
+        // TODO: support TLS
         this.channel = ManagedChannelBuilder.forAddress(host, port)
-            // TODO: support TLS
             .usePlaintext()
             .build();
         this.transportGrpcStub = OpenSergoUniversalTransportServiceGrpc.newStub(channel);
@@ -59,8 +61,12 @@ public class OpenSergoClient implements AutoCloseable {
     }
 
     public void start() throws Exception {
-        this.requestAndResponseWriter = transportGrpcStub.withWaitForReady()
+        this.requestAndResponseWriter = transportGrpcStub
+            .withWaitForReady()
+            // The deadline SHOULD be set when waitForReady is enabled
+            .withDeadlineAfter(10, TimeUnit.SECONDS)
             .subscribeConfig(new OpenSergoSubscribeClientObserver(configCache, subscribeRegistry));
+        // TODO: add state management for the client.
     }
 
     @Override
