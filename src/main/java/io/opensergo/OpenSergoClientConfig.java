@@ -16,10 +16,9 @@
 package io.opensergo;
 
 /**
- * .
- *
  * @author Jiangnan Jia
- **/
-public class OpenSergoConfig {
-
+ * @author Eric Zhao
+ */
+public class OpenSergoClientConfig {
+    // TODO: add config attribute
 }

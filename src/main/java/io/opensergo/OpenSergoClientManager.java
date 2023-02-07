@@ -16,12 +16,11 @@
 package io.opensergo;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
- * .
- *
  * @author Jiangnan Jia
- **/
+ */
 public class OpenSergoClientManager {
 
     private static volatile OpenSergoClientManager instance;
@@ -29,16 +28,14 @@ public class OpenSergoClientManager {
     /**
      * Cached all the shared OpenSergoClients.
      */
-    private ConcurrentHashMap<String, OpenSergoClient> sharedOpenSergoClientCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, OpenSergoClient> sharedClientCache = new ConcurrentHashMap<>();
 
-
-    private OpenSergoClientManager() {
-
-    }
+    private OpenSergoClientManager() {}
 
     /**
-     * get OpenSergoClientManager by DCL (Double Check Lock)
-     * @return
+     * Get OpenSergoClientManager by DCL (Double Check Lock).
+     *
+     * @return the OpenSergoClientManager singleton
      */
     public static OpenSergoClientManager get() {
         if (instance == null) {
@@ -56,38 +53,42 @@ public class OpenSergoClientManager {
     }
 
     /**
-     * get the instance from sharedOpenSergoClientCache，
-     * if there is no one， will create a new instance and return it.
+     * Get the instance from sharedOpenSergoClientCache.
+     * If there is no one, the manager will create a new client instance and return it.
      *
      * @param host endpoint of the OpenSergo Control Plane
      * @param port port of the OpenSergo Control Plane
      * @return OpenSergoClient
      */
     public OpenSergoClient getOrCreateClient(String host, int port) {
-        return this.getOrCreateClient(host, port, new OpenSergoConfig());
+        return this.getOrCreateClient(host, port, new OpenSergoClientConfig());
     }
 
     /**
-     * get the instance from sharedOpenSergoClientCache with config.
+     * Get the instance from sharedOpenSergoClientCache with config.
      * If instance can be found by host and port, the one will be returned, whether the config is matched or not.
      *
-     * @param host endpoint of the OpenSergo Control Plane
-     * @param port port of the OpenSergo Control Plane
-     * @param config OpenSergoConfig
+     * @param host   endpoint of the OpenSergo Control Plane
+     * @param port   port of the OpenSergo Control Plane
+     * @param config client config
      * @return OpenSergoClient
      */
-    public OpenSergoClient getOrCreateClient(String host, int port, OpenSergoConfig config) {
+    public OpenSergoClient getOrCreateClient(String host, int port, OpenSergoClientConfig config) {
         String sharedOpenSergoClientKey = buildSharedCacheKey(host, port);
-        OpenSergoClient openSergoClient = sharedOpenSergoClientCache.get(sharedOpenSergoClientKey);
+        synchronized (this) {
+            OpenSergoClient openSergoClient = sharedClientCache.get(sharedOpenSergoClientKey);
+            if (openSergoClient != null) {
+                return openSergoClient;
+            }
 
-        if (openSergoClient != null) {
-            return openSergoClient;
+            if (config == null) {
+                config = new OpenSergoClientConfig();
+            }
+            openSergoClient = new OpenSergoClient.Builder().endpoint(host, port)
+                .openSergoConfig(config).build();
+            sharedClientCache.putIfAbsent(sharedOpenSergoClientKey, openSergoClient);
+            return sharedClientCache.get(sharedOpenSergoClientKey);
         }
-
-        config = config == null ? new OpenSergoConfig() : config;
-        openSergoClient = new OpenSergoClient.Builder().endpoint(host, port).openSergoConfig(config).build();
-        sharedOpenSergoClientCache.putIfAbsent(sharedOpenSergoClientKey, openSergoClient);
-        return sharedOpenSergoClientCache.get(sharedOpenSergoClientKey);
     }
 
 }

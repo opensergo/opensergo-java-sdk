@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class OpenSergoClient implements AutoCloseable {
 
+    private final OpenSergoClientConfig clientConfig;
+
     private final ManagedChannel channel;
     private final OpenSergoUniversalTransportServiceGrpc.OpenSergoUniversalTransportServiceStub transportGrpcStub;
 
@@ -52,7 +54,7 @@ public class OpenSergoClient implements AutoCloseable {
 
         private String host;
         private int port;
-        private OpenSergoConfig openSergoConfig;
+        private OpenSergoClientConfig openSergoConfig;
 
         public OpenSergoClient.Builder endpoint(String host, int port) {
             this.host = host;
@@ -60,14 +62,14 @@ public class OpenSergoClient implements AutoCloseable {
             return this;
         }
 
-        public OpenSergoClient.Builder openSergoConfig(OpenSergoConfig openSergoConfig) {
+        public OpenSergoClient.Builder openSergoConfig(OpenSergoClientConfig openSergoConfig) {
             this.openSergoConfig = openSergoConfig;
             return this;
         }
 
         public OpenSergoClient build() {
             if (this.openSergoConfig == null) {
-                this.openSergoConfig = new OpenSergoConfig();
+                this.openSergoConfig = new OpenSergoClientConfig();
             }
 
             return new OpenSergoClient(this.host, this.port, this.openSergoConfig);
@@ -75,16 +77,26 @@ public class OpenSergoClient implements AutoCloseable {
 
     }
 
-    private OpenSergoClient(String host, int port, OpenSergoConfig config) {
-        // TODO: add customized config business for the OpenSergoClient.
+    public OpenSergoClient(String host, int port) {
+        // TODO: improve default config logic here.
+        this(host, port, new OpenSergoClientConfig());
+    }
+
+    public OpenSergoClient(String host, int port, OpenSergoClientConfig clientConfig) {
+        checkClientConfig(clientConfig);
         // TODO: support TLS
+        this.clientConfig = clientConfig;
         this.channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
-                .build();
+            .usePlaintext()
+            .build();
         this.transportGrpcStub = OpenSergoUniversalTransportServiceGrpc.newStub(channel);
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
         this.reqId = new AtomicInteger(0);
+    }
+
+    private void checkClientConfig(OpenSergoClientConfig clientConfig) {
+        AssertUtils.assertNotNull(clientConfig, "clientConfig cannot be null");
     }
 
     public void start() throws Exception {
