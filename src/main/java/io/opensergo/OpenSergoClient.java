@@ -48,12 +48,39 @@ public class OpenSergoClient implements AutoCloseable {
 
     private AtomicInteger reqId;
 
-    public OpenSergoClient(String host, int port) {
-        // TODO: support customized config for the OpenSergoClient.
+    public static class Builder {
+
+        private String host;
+        private int port;
+        private OpenSergoConfig openSergoConfig;
+
+        public OpenSergoClient.Builder endpoint(String host, int port) {
+            this.host = host;
+            this.port = port;
+            return this;
+        }
+
+        public OpenSergoClient.Builder openSergoConfig(OpenSergoConfig openSergoConfig) {
+            this.openSergoConfig = openSergoConfig;
+            return this;
+        }
+
+        public OpenSergoClient build() {
+            if (this.openSergoConfig == null) {
+                this.openSergoConfig = new OpenSergoConfig();
+            }
+
+            return new OpenSergoClient(this.host, this.port, this.openSergoConfig);
+        }
+
+    }
+
+    private OpenSergoClient(String host, int port, OpenSergoConfig config) {
+        // TODO: add customized config business for the OpenSergoClient.
         // TODO: support TLS
         this.channel = ManagedChannelBuilder.forAddress(host, port)
-            .usePlaintext()
-            .build();
+                .usePlaintext()
+                .build();
         this.transportGrpcStub = OpenSergoUniversalTransportServiceGrpc.newStub(channel);
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
