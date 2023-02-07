@@ -30,7 +30,7 @@ public class OpenSergoClientManager {
      */
     private final ConcurrentMap<String, OpenSergoClient> sharedClientCache = new ConcurrentHashMap<>();
 
-    private OpenSergoClientManager() {}
+    OpenSergoClientManager() {}
 
     /**
      * Get OpenSergoClientManager by DCL (Double Check Lock).
@@ -89,6 +89,11 @@ public class OpenSergoClientManager {
             sharedClientCache.putIfAbsent(sharedOpenSergoClientKey, openSergoClient);
             return sharedClientCache.get(sharedOpenSergoClientKey);
         }
+    }
+
+    synchronized void clearAllCachedClients() {
+        // For test.
+        sharedClientCache.clear();
     }
 
 }
