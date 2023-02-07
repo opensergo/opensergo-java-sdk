@@ -6,7 +6,7 @@
 
     <groupId>io.opensergo</groupId>
     <artifactId>opensergo-java-sdk</artifactId>
-    <version>0.1.0-beta2</version>
+    <version>0.1.0</version>
 
     <name>OpenSergo SDK for Java</name>
     <url>https://opensergo.io</url>
