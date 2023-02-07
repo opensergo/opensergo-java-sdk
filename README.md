@@ -31,7 +31,7 @@ See the [中文文档](https://opensergo.io/zh-cn/) for document in Chinese.
 
 ```java
 // 1. Create client with remote host and port of OpenSergo control plane
-OpenSergoClient client = new OpenSergoClient(host, port);
+OpenSergoClient client = OpenSergoClientManager.get().getOrCreateClient(host, port);
 // 2. Start the OpenSergo client.
 client.start();
 
