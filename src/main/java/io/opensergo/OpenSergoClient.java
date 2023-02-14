@@ -52,8 +52,8 @@ public class OpenSergoClient implements AutoCloseable {
 
     public static class Builder {
 
-        private String host;
-        private int port;
+        private String host = "localhost";
+        private int port = 10246;
         private OpenSergoClientConfig openSergoConfig;
 
         public OpenSergoClient.Builder endpoint(String host, int port) {
@@ -83,6 +83,7 @@ public class OpenSergoClient implements AutoCloseable {
     }
 
     public OpenSergoClient(String host, int port, OpenSergoClientConfig clientConfig) {
+        checkEndpoint(host, port);
         checkClientConfig(clientConfig);
         // TODO: support TLS
         this.clientConfig = clientConfig;
@@ -93,6 +94,11 @@ public class OpenSergoClient implements AutoCloseable {
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
         this.reqId = new AtomicInteger(0);
+    }
+
+    private void checkEndpoint(String host, int port) {
+        AssertUtils.notEmpty(host, "host cannot be empty, need to give a valid host");
+        AssertUtils.isTrue(port > 0, "port < 1 is invalid, need to give a valid port");
     }
 
     private void checkClientConfig(OpenSergoClientConfig clientConfig) {
