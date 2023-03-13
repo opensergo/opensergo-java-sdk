@@ -40,7 +40,7 @@ import static org.junit.Assert.*;
 /**
  * @author Jax4Li
  */
-public class OpenSergoClientTest {
+public class OpenSergoUniversalTransportServiceTest {
     @Rule
     public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
@@ -184,7 +184,7 @@ public class OpenSergoClientTest {
                                 // from client ack, skip
                                 return;
                             }
-                            // push first time data, it cloud be cached by client
+                            // push first time data, it could be cached by client
                             SubscribeResponse response = buildSpecificFaultToleranceRuleSubscribeResponse();
                             expectedResponse.set(response);
                             responseObserver.onNext(response);
