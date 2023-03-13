@@ -60,17 +60,34 @@ public class OpenSergoClientTest {
         client.close();
     }
 
+    /**
+     * client(without subscriber) subscribe config, then server response ack with success code
+     * @throws InterruptedException
+     */
     @Test
     public void testSubscribeConfigServerResponseSuccess() throws InterruptedException {
-        testSubscribeConfigServerResponse(OpenSergoTransportConstants.CODE_SUCCESS);
+        testSubscribeConfigServerResponse(OpenSergoTransportConstants.CODE_SUCCESS, true);
     }
 
+    /**
+     * client(without subscriber) subscribe config, but server response ack with error code
+     * @throws Exception
+     */
     @Test
     public void testSubscribeConfigServerResponseError() throws Exception {
-        testSubscribeConfigServerResponse(OpenSergoTransportConstants.CODE_ERROR_SUBSCRIBE_HANDLER_ERROR);
+        testSubscribeConfigServerResponse(OpenSergoTransportConstants.CODE_ERROR_SUBSCRIBE_HANDLER_ERROR, true);
     }
 
-    private void testSubscribeConfigServerResponse(int code) throws InterruptedException {
+    /**
+     * client(without subscriber) unsubscribe config, then server response ack with success code
+     * @throws InterruptedException
+     */
+    @Test
+    public void testUnsubscribeConfigServerResponseSuccess() throws InterruptedException {
+        testSubscribeConfigServerResponse(OpenSergoTransportConstants.CODE_SUCCESS, false);
+    }
+
+    private void testSubscribeConfigServerResponse(int code, boolean subscribe) throws InterruptedException {
         final AtomicReference<SubscribeRequest> actualRequest = new AtomicReference<>();
 
         // implement the fake service
@@ -90,7 +107,11 @@ public class OpenSergoClientTest {
 
         // client call service
         SubscribeKey subscribeKey = new SubscribeKey("default", "my-service", ConfigKind.TRAFFIC_ROUTER_STRATEGY);
-        client.subscribeConfig(subscribeKey);
+        if (subscribe){
+            client.subscribeConfig(subscribeKey);
+        }else {
+            client.unsubscribeConfig(subscribeKey);
+        }
 
         // wait for response finish
         Thread.sleep(1000);
@@ -101,6 +122,11 @@ public class OpenSergoClientTest {
         assertEquals(subscribeKey.getKind().getKindName(), actualRequest.get().getTarget().getKinds(0));
     }
 
+    /**
+     * client(with subscriber) subscribe faultToleranceRule, then server push the updated faultToleranceRule
+     * @throws InterruptedException
+     * @throws InvalidProtocolBufferException
+     */
     @Test
     public void testServerPushDataSubscriberSuccess() throws InterruptedException, InvalidProtocolBufferException {
         final AtomicReference<Object> actualData = new AtomicReference<>();
@@ -135,6 +161,11 @@ public class OpenSergoClientTest {
         testServerPushFaultToleranceRule(configSubscriber, serviceImpl, actualData, actualRequest, expectedResponse);
     }
 
+    /**
+     * client(with subscriber) subscribe faultToleranceRule, then server push the outdated faultToleranceRule
+     * @throws InterruptedException
+     * @throws InvalidProtocolBufferException
+     */
     @Test
     public void testServerPushOutdatedVersionData() throws InterruptedException, InvalidProtocolBufferException {
         final AtomicReference<Object> actualData = new AtomicReference<>();
@@ -186,6 +217,11 @@ public class OpenSergoClientTest {
         testServerPushFaultToleranceRule(configSubscriber, serviceImpl, actualData, actualRequest, expectedResponse);
     }
 
+    /**
+     * client(with subscriber) subscribe faultToleranceRule, then server push the updated faultToleranceRule, but client side subscriber handler error
+     * @throws InterruptedException
+     * @throws InvalidProtocolBufferException
+     */
     @Test
     public void testServerPushDataButSubscriberError() throws InterruptedException, InvalidProtocolBufferException {
         final AtomicReference<Object> actualData = new AtomicReference<>();
