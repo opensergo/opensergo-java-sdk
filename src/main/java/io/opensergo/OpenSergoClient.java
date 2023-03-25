@@ -16,7 +16,7 @@
 package io.opensergo;
 
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.opensergo.log.OpenSergoLogger;
 import io.opensergo.proto.transport.v1.OpenSergoUniversalTransportServiceGrpc;
@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Eric Zhao
+ * @author Jax4Li
  */
 public class OpenSergoClient implements AutoCloseable {
 
@@ -78,17 +79,23 @@ public class OpenSergoClient implements AutoCloseable {
     }
 
     public OpenSergoClient(String host, int port) {
-        // TODO: improve default config logic here.
         this(host, port, new OpenSergoClientConfig());
     }
 
     public OpenSergoClient(String host, int port, OpenSergoClientConfig clientConfig) {
         checkClientConfig(clientConfig);
-        // TODO: support TLS
         this.clientConfig = clientConfig;
-        this.channel = ManagedChannelBuilder.forAddress(host, port)
-            .usePlaintext()
-            .build();
+        NettyChannelBuilder channelBuilder = NettyChannelBuilder.forAddress(host, port)
+                .maxInboundMessageSize(clientConfig.getMaxInboundMessageSize())
+                .maxRetryAttempts(clientConfig.getMaxRetryAttempts())
+                .maxHedgedAttempts(clientConfig.getMaxHedgedAttempts())
+                .retryBufferSize(clientConfig.getRetryBufferSize())
+                .perRpcBufferLimit(clientConfig.getPerRpcBufferLimit())
+                .idleTimeout(clientConfig.getIdleTimeoutMillis(), TimeUnit.MILLISECONDS)
+                .keepAliveTime(clientConfig.getKeepAliveTimeMillis(), TimeUnit.MILLISECONDS)
+                .keepAliveTimeout(clientConfig.getKeepAliveTimeoutMillis(), TimeUnit.MILLISECONDS);
+        this.channel = clientConfig.isServerSideTls() || clientConfig.isClientSideTls()?
+                channelBuilder.sslContext(clientConfig.newSslContext()).build() : channelBuilder.usePlaintext().build();
         this.transportGrpcStub = OpenSergoUniversalTransportServiceGrpc.newStub(channel);
         this.configCache = new SubscribedConfigCache();
         this.subscribeRegistry = new SubscribeRegistry();
@@ -97,6 +104,13 @@ public class OpenSergoClient implements AutoCloseable {
 
     private void checkClientConfig(OpenSergoClientConfig clientConfig) {
         AssertUtils.assertNotNull(clientConfig, "clientConfig cannot be null");
+        if (clientConfig.isServerSideTls()){
+            AssertUtils.assertNotNull(clientConfig.getServerTrustCertFile(), "serverTrustCertFile cannot be null");
+        }
+        if (clientConfig.isClientSideTls()){
+            AssertUtils.assertNotNull(clientConfig.getClientCertChainFile(), "clientCertChainFile cannot be null");
+            AssertUtils.assertNotNull(clientConfig.getClientPrivateKeyFile(), "clientPrivateKeyFile cannot be null");
+        }
     }
 
     public void start() throws Exception {
